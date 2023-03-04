@@ -1,0 +1,115 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'package:get/get.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+
+import '../../models/task_model.dart';
+
+class NotificationPlugin {
+  // Notification controller
+  late FlutterLocalNotificationsPlugin fNotification;
+
+  NotificationPlugin() {
+    init();
+  }
+  Future onNotificationSelected(String? payload) {
+    return showDialog(
+        context: Get.context!,
+        builder: (context) => AlertDialog(
+              content: Text('Notify $payload'),
+            ));
+  }
+
+  Future showNotification() async {
+    var androidDetails = const AndroidNotificationDetails(
+      'Channel ID 0',
+      'Drink Water',
+      // 'Drink Water Notification',
+      channelDescription: 'Drink Water Notification',
+      importance: Importance.max,
+      sound: RawResourceAndroidNotificationSound('slow_spring_board'),
+      enableLights: true,
+      enableVibration: true,
+      ledColor: Color.fromARGB(255, 255, 0, 255),
+      ledOnMs: 1000,
+      ledOffMs: 500,
+    );
+    var generalNotificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    // Function to periodically show notification
+    await fNotification.periodicallyShow(
+      10001,
+      'Drink Water',
+      'Keep Yourself Hydrated',
+      RepeatInterval.hourly,
+      generalNotificationDetails,
+      payload: "Drink Water",
+      androidAllowWhileIdle: true,
+    );
+  }
+
+  Future cancelDrinkwaterNotifucation() async {
+    await fNotification.cancel(10001);
+  }
+
+  Future showTaskNotification(Task task, int id) async {
+    final String currentTimeZone =
+        await FlutterNativeTimezone.getLocalTimezone();
+    final location = tz.getLocation(currentTimeZone);
+    var scheduledTime = tz.TZDateTime.from(task.taskDate!, location)
+        .add(const Duration(seconds: 5));
+
+    var androidDetails = AndroidNotificationDetails(
+      "Channel ID 2",
+      task.taskTitle!,
+      //  task.taskDesc,
+      channelDescription: task.taskDesc,
+      importance: Importance.max,
+      sound: const RawResourceAndroidNotificationSound('slow_spring_board'),
+      enableLights: true,
+      enableVibration: true,
+      ledColor: const Color.fromARGB(255, 255, 0, 255),
+      ledOnMs: 1000,
+      ledOffMs: 500,
+    );
+    var generalNotificationDetails = NotificationDetails(
+      android: androidDetails,
+    );
+
+    await fNotification.zonedSchedule(
+      id,
+      task.taskTitle,
+      task.taskDesc,
+      scheduledTime,
+      generalNotificationDetails,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+      androidAllowWhileIdle: true,
+      payload: task.taskTitle,
+      matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+    );
+  }
+
+  Future cancelTaskNotifucation(int id) async {
+    await fNotification.cancel(id);
+  }
+
+  void init() {
+    tz.initializeTimeZones();
+    // notification config
+    fNotification = FlutterLocalNotificationsPlugin();
+    var androidInitialize =
+        const AndroidInitializationSettings('@mipmap/ic_launcher');
+    ;
+    var initializationSetting = InitializationSettings(
+      android: androidInitialize,
+    );
+    fNotification.initialize(
+      initializationSetting,
+    );
+  }
+}
